@@ -1,18 +1,73 @@
-import requests
+import requests, time
 from pprint import pprint
-cookie = 'PVEAuthCookie=PVE:apiuser@pam:65972FBB::RFxuxFlVm13ZWmBCqCVQNUfnDU3XtXZWt3PP7CnwRWafzhUnAXJG/3pKDcpT4U2ANzlSvhS3YgZk/tCU9/5CQMTMy8Gs1xQj98jzkFFgxTDOkEgAXyWbX0p76ZNEgmtK+cwItrQ01ccp4g4xCcrv/Ixp/9StSq1q8li57Cb8hwIl9zke4muroCIWy0MRgxI1LleHp+PRmOkdkfRHzap0mZv+tAsp58p2k2/s5wOyoBUQl2fBmEZGXEivYLVNimkZRT8qPwpKXgQWjZHFCsRPK6jSLZUdwrynMnkWH8M7t+OfpsW/GMlaOKfAfuLBKLlI/miykdazwilI8o34mCDKeg=='
-
+cookie = 'PVEAuthCookie=PVE:apiuser@pam:65976B9A::mbdWg9JG75rPoo08+si8x3BxrqAAPfm8EwD3p+gGZzDypFaR+FRstoJcPI/7HwwezPWpCabO5mnmOqFexS3KttaqzC83LML235sTolIep9bdc79lsheMvScQexlJUCCMaYIeInK7kEMXRLiyJfitfMpdJ/OF4U7g7kJx1p/Vi4lxi8QF/3EEHWJ6p9IK94zSqgbgThR76cOuaVc5KP1hsoNrwFmKs+iVfnQY8ltuG9NcTYb/VNZJWBOpxRgCrlfhhQXfhZ7VeYEOWH3aNaeOkWoSEZYP0Wo6G+NEuqp9+rqAapbQ3COpZHWfuFmC2dGxyoXyQj8aGcMvnxgvnnJ/lg=='
+import json
 
 payload = {}
 headers = {
-  'CSRFPreventionToken': '',
+  'CSRFPreventionToken': '65976B9A:fBxw8K8O78aYXet/QFgiCbY+O+daS8jNi3uUeQ7PJa8',
+  'Content-Type': 'application/json',
   'Cookie': cookie
 }
 
-url = "https://192.168.240.8:8006/api2/json/nodes/vm1/status"
-response = requests.request("GET", url, headers=headers, data=payload, verify=False).json()
-pprint(response)
+# create the VM from the template
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/106/clone"
+payload = json.dumps({
+  "newid": 120,
+  "description": "testing VM for MIE",
+  "name": "mie-test-dhcp",
+})
+response = requests.request("POST", url, headers=headers, data=payload, verify=False).json()
+#
+print(response)
+
+time.sleep(15)
+
+# start the VM
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/status/start"
+payload = json.dumps({})
+response = requests.request("POST", url, headers=headers, data=payload, verify=False).json()
+
+print(response)
+time.sleep(15)
+
+
+# get ip of new VM created
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/network-get-interfaces"
+response = requests.request("GET", url, headers=headers, verify=False).json()
+pprint(response['data']['result'][1]['ip-addresses'])
+
+# write the provision script to the server
+filename = "install_dhcp.sh"
+with open(filename) as script:
+    contents = script.read()
+
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/file-write"
+payload = json.dumps({
+  "content": contents,
+  "file": "/tmp/install_dhcp.sh"
+})
+
+response = requests.request("POST", url, headers=headers, data=payload, verify=False).json()
+
+print(response)
+
 print("--------------------------------------------------------------------")
-url = "https://192.168.240.8:8006/api2/json/nodes/"
-response = requests.request("GET", url, headers=headers, data=payload, verify=False).json()
-pprint(response)
+
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/exec"
+payload = json.dumps({
+  "command": ["chmod", "+x", "/tmp/install_dhcp.sh"]
+})
+
+response = requests.request("POST", url, headers=headers, data=payload, verify=False).json()
+print(response)
+
+print("--------------------------------------------------------------------")
+
+url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/exec"
+payload = json.dumps({
+  "command": ["bash", "-c", "/tmp/install_dhcp.sh"]
+})
+
+response = requests.request("POST", url, headers=headers, data=payload, verify=False).json()
+print(response)
