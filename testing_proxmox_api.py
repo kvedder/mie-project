@@ -10,6 +10,7 @@ headers = {
   'Cookie': cookie
 }
 
+
 # create the VM from the template
 url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/106/clone"
 payload = json.dumps({
@@ -54,6 +55,8 @@ print(response)
 
 print("--------------------------------------------------------------------")
 
+
+# make the provision script executable
 url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/exec"
 payload = json.dumps({
   "command": ["chmod", "+x", "/tmp/install_dhcp.sh"]
@@ -64,6 +67,7 @@ print(response)
 
 print("--------------------------------------------------------------------")
 
+# execute the provision script
 url = "https://192.168.240.8:8006/api2/json/nodes/vm1/qemu/120/agent/exec"
 payload = json.dumps({
   "command": ["bash", "-c", "/tmp/install_dhcp.sh"]
